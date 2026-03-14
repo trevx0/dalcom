@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Caja | DALCOM</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .panel-box {
+            background: #ffffff;
+            border-radius: 18px;
+            padding: 1.5rem;
+            margin-top: 1.5rem;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+        }
+
+        .pedido-card {
+            background: #fff;
+            border-radius: 16px;
+            padding: 1.4rem;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+            margin-bottom: 1rem;
+            border-left: 6px solid #ff7a00;
+        }
+
+        .pedido-card h3 {
+            margin-top: 0;
+            color: #ff7a00;
+        }
+
+        .estado-botones,
+        .acciones,
+        .acciones-dia {
+            display: flex;
+            gap: 0.8rem;
+            flex-wrap: wrap;
+            margin-top: 1rem;
+        }
+
+        .btn-secundario {
+            background: #111111;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 0.85rem 1.2rem;
+            font-size: 0.95rem;
+            cursor: pointer;
+        }
+
+        .btn-secundario:hover {
+            background: #000000;
+        }
+
+        .btn-peligro {
+            background: #d9480f;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 0.85rem 1.2rem;
+            font-size: 0.95rem;
+            cursor: pointer;
+        }
+
+        .btn-peligro:hover {
+            background: #b93800;
+        }
+
+        .estado {
+            display: inline-block;
+            padding: 0.35rem 0.7rem;
+            border-radius: 999px;
+            font-weight: bold;
+            margin-top: 0.3rem;
+        }
+
+        .estado-pendiente {
+            background: #fff3e8;
+            color: #b45309;
+        }
+
+        .estado-preparando {
+            background: #ffe8cc;
+            color: #c2410c;
+        }
+
+        .estado-dia {
+            text-align: center;
+            font-weight: bold;
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+            color: #ff7a00;
+        }
+
+        .logo-caja {
+            width: 110px;
+            display: block;
+            margin: 0 auto 1rem auto;
+        }
+    </style>
+</head>
+<body>
+    <header class="navbar">
+        <nav>
+            <ul>
+                <li><a href="/ordenar">Menú</a></li>
+                <li><a href="/caja">Caja</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <section class="contenedor-principal">
+        <header class="main-header">
+            <img src="{{ url_for('static', filename='img/logo-dalcom.png') }}" alt="Logo DALCOM" class="logo-caja">
+            <h1>Panel de Caja / Cocina</h1>
+            <p>Aquí ves los pedidos en cuanto llegan</p>
+        </header>
+
+        <section class="panel-box">
+            <div id="estadoDia" class="estado-dia">Cargando estado del día...</div>
+
+            <div class="acciones-dia">
+                <button class="btn-secundario" onclick="abrirDia()">Abrir día</button>
+                <button class="btn-peligro" onclick="cerrarDia()">Cerrar día</button>
+            </div>
+
+            <h2 style="text-align:center; color:#ff7a00;">Pedidos en tiempo real</h2>
+            <div id="pedidos"></div>
+        </section>
+    </section>
+
+    <audio id="alertaSonido" preload="auto">
+        <source src="{{ url_for('static', filename='nuevo-pedido.mp3') }}" type="audio/mpeg">
+    </audio>
+
+    <script>
+        let ultimoPedidoId = 0;
+        let primeraCarga = true;
+
+        function claseEstado(estado) {
+            if (estado === "Pendiente") return "estado estado-pendiente";
+            if (estado === "Preparando") return "estado estado-preparando";
+            return "estado";
+        }
+
+        function revisarEstadoDia() {
+            fetch("/estado_dia")
+                .then(res => res.json())
+                .then(data => {
+                    const estadoDia = document.getElementById("estadoDia");
+                    estadoDia.textContent = data.abierto
+                        ? "Estado actual: Día abierto"
+                        : "Estado actual: Día cerrado";
+                });
+        }
+
+        function abrirDia() {
+            fetch("/abrir_dia", { method: "POST" })
+            .then(res => res.json())
+            .then(data => {
+                alert(data.mensaje);
+                revisarEstadoDia();
+                cargarPedidos();
+            });
+        }
+
+        function cerrarDia() {
+            const confirmar = confirm("Esto borrará todos los pedidos y cerrará el servicio por hoy. ¿Continuar?");
+            if (!confirmar) return;
+
+            fetch("/cerrar_dia", { method: "POST" })
+            .then(res => res.json())
+            .then(data => {
+                alert(data.mensaje);
+                revisarEstadoDia();
+                cargarPedidos();
+            });
+        }
+
+        function cambiarEstado(id, estado) {
+            fetch(`/cambiar_estado/${id}`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ estado: estado })
+            })
+            .then(res => res.json())
+            .then(data => {
+                alert(data.mensaje);
+                cargarPedidos();
+            });
+        }
+
+        function imprimirTicket(id) {
+            window.open(`/ticket/${id}`, "_blank");
+        }
+
+        function reproducirSonido() {
+            const audio = document.getElementById("alertaSonido");
+            audio.play().catch(() => {});
+        }
+
+        function cargarPedidos() {
+            fetch("/obtener_pedidos")
+                .then(res => res.json())
+                .then(data => {
+                    const contenedor = document.getElementById("pedidos");
+                    contenedor.innerHTML = "";
+
+                    if (data.length === 0) {
+                        contenedor.innerHTML = `
+                            <div class="pedido-card">
+                                <h3>No hay pedidos todavía</h3>
+                                <p>Cuando llegue uno, aparecerá aquí.</p>
+                            </div>
+                        `;
+                        return;
+                    }
+
+                    const pedidoMasNuevo = data[0];
+
+                    if (!primeraCarga && pedidoMasNuevo.id > ultimoPedidoId) {
+                        reproducirSonido();
+                        alert("¡Llegó un pedido nuevo!");
+                    }
+
+                    ultimoPedidoId = pedidoMasNuevo.id;
+                    primeraCarga = false;
+
+                    data.forEach(pedido => {
+                        const div = document.createElement("div");
+                        div.className = "pedido-card";
+
+                        div.innerHTML = `
+                            <h3>Pedido #${pedido.id}</h3>
+                            <p><strong>Nombre:</strong> ${pedido.cliente}</p>
+                            <p><strong>Pedido:</strong> ${pedido.productos}</p>
+                            <p><strong>Total:</strong> $${pedido.total}</p>
+                            <p><strong>Hora:</strong> ${pedido.fecha}</p>
+                            <p><strong>Estado:</strong> <span class="${claseEstado(pedido.estado)}">${pedido.estado}</span></p>
+
+                            <div class="estado-botones">
+                                <button class="btn" onclick="cambiarEstado(${pedido.id}, 'Pendiente')">Pendiente</button>
+                                <button class="btn" onclick="cambiarEstado(${pedido.id}, 'Preparando')">Preparando</button>
+                                <button class="btn-peligro" onclick="cambiarEstado(${pedido.id}, 'Entregado')">Entregado y borrar</button>
+                            </div>
+
+                            <div class="acciones">
+                                <button class="btn-secundario" onclick="imprimirTicket(${pedido.id})">Imprimir ticket</button>
+                            </div>
+                        `;
+
+                        contenedor.appendChild(div);
+                    });
+                });
+        }
+
+        revisarEstadoDia();
+        cargarPedidos();
+        setInterval(() => {
+            revisarEstadoDia();
+            cargarPedidos();
+        }, 3000);
+    </script>
+</body>
+</html>

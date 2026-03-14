@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DALCOM | Comida Coreana</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+    <header class="navbar">
+        <nav>
+            <ul>
+                <li><a href="/ordenar">Inicio</a></li>
+                <li><a href="#menu">Menú</a></li>
+                <li><a href="#pedido">Tu pedido</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <section class="contenedor-principal">
+        <header class="main-header">
+            <img src="{{ url_for('static', filename='img/logo-dalcom.png') }}" alt="Logo DALCOM" class="logo-principal">
+            <h1>DALCOM</h1>
+            <p>Comida coreana servida directo a tu mesa</p>
+        </header>
+
+        <section id="avisoDia" class="aviso-dia oculto">
+            <div class="aviso-contenido">
+                <h2>Pedidos cerrados por hoy</h2>
+                <p>Lo sentimos, por el momento ya no estamos aceptando pedidos. Gracias por visitar DALCOM.</p>
+            </div>
+        </section>
+
+        <section class="intro-box">
+            <h2>Bienvenido</h2>
+            <p>
+                Explora nuestro menú, toca un platillo para ver su detalle
+                y agrégalo a tu pedido. Solo escribe tu nombre para identificarlo.
+            </p>
+        </section>
+
+        <section class="nombre-cliente" id="pedido">
+            <h2>Identifica tu pedido</h2>
+            <input type="text" id="cliente" placeholder="Escribe tu nombre">
+        </section>
+
+        <section class="destacadas" id="menu">
+            <h2>Platillos populares</h2>
+
+            <div class="cards">
+                <div class="card" onclick="abrirModal('Tteokbokki', 'Pasteles de arroz en salsa picante coreana.', 95, 'img/tteokbokki.jpg')">
+                    <h3>Tteokbokki</h3>
+                    <img src="{{ url_for('static', filename='img/tteokbokki.jpg') }}" alt="Tteokbokki">
+                    <p class="precio">$95</p>
+                    <button class="btn" onclick="event.stopPropagation(); agregarProducto('Tteokbokki', 95)">Pedir</button>
+                </div>
+
+                <div class="card" onclick="abrirModal('Kimbap', 'Rollos coreanos rellenos de vegetales y proteína.', 85, 'img/kimbap.jpg')">
+                    <h3>Kimbap</h3>
+                    <img src="{{ url_for('static', filename='img/kimbap.jpg') }}" alt="Kimbap">
+                    <p class="precio">$85</p>
+                    <button class="btn" onclick="event.stopPropagation(); agregarProducto('Kimbap', 85)">Pedir</button>
+                </div>
+
+                <div class="card" onclick="abrirModal('Bibimbap', 'Arroz con vegetales, huevo y salsa gochujang.', 120, 'img/bibimbap.jpg')">
+                    <h3>Bibimbap</h3>
+                    <img src="{{ url_for('static', filename='img/bibimbap.jpg') }}" alt="Bibimbap">
+                    <p class="precio">$120</p>
+                    <button class="btn" onclick="event.stopPropagation(); agregarProducto('Bibimbap', 120)">Pedir</button>
+                </div>
+
+                <div class="card" onclick="abrirModal('Ramyeon', 'Sopa coreana caliente con fideos y toppings.', 110, 'img/ramyeon.jpg')">
+                    <h3>Ramyeon</h3>
+                    <img src="{{ url_for('static', filename='img/ramyeon.jpg') }}" alt="Ramyeon">
+                    <p class="precio">$110</p>
+                    <button class="btn" onclick="event.stopPropagation(); agregarProducto('Ramyeon', 110)">Pedir</button>
+                </div>
+
+                <div class="card" onclick="abrirModal('Pollo coreano', 'Pollo crujiente con salsa dulce y picante.', 145, 'img/pollo-coreano.jpg')">
+                    <h3>Pollo coreano</h3>
+                    <img src="{{ url_for('static', filename='img/pollo-coreano.jpg') }}" alt="Pollo coreano">
+                    <p class="precio">$145</p>
+                    <button class="btn" onclick="event.stopPropagation(); agregarProducto('Pollo coreano', 145)">Pedir</button>
+                </div>
+
+                <div class="card" onclick="abrirModal('Hotteok', 'Postre coreano relleno y dorado al sartén.', 70, 'img/hotteok.jpg')">
+                    <h3>Hotteok</h3>
+                    <img src="{{ url_for('static', filename='img/hotteok.jpg') }}" alt="Hotteok">
+                    <p class="precio">$70</p>
+                    <button class="btn" onclick="event.stopPropagation(); agregarProducto('Hotteok', 70)">Pedir</button>
+                </div>
+            </div>
+        </section>
+
+        <section class="carrito-box">
+            <h2>Tu pedido</h2>
+            <ul id="listaCarrito"></ul>
+            <h3>Total: $<span id="total">0</span></h3>
+            <button class="btn" id="btnEnviarPedido" onclick="enviarPedido()">Enviar pedido</button>
+        </section>
+    </section>
+
+    <div class="modal" id="modalPlatillo">
+        <div class="modal-content">
+            <span class="cerrar" onclick="cerrarModal()">&times;</span>
+            <img id="modalImg" src="" alt="">
+            <h2 id="modalTitulo"></h2>
+            <p id="modalDescripcion"></p>
+            <p class="precio" id="modalPrecio"></p>
+            <button class="btn" id="modalBtn">Pedir</button>
+        </div>
+    </div>
+
+    <script>
+        let carrito = [];
+
+        function agregarProducto(nombre, precio) {
+            let productoExistente = carrito.find(p => p.nombre === nombre);
+
+            if (productoExistente) {
+                productoExistente.cantidad++;
+            } else {
+                carrito.push({ nombre, precio, cantidad: 1 });
+            }
+
+            mostrarCarrito();
+        }
+
+        function mostrarCarrito() {
+            const lista = document.getElementById("listaCarrito");
+            const totalSpan = document.getElementById("total");
+            lista.innerHTML = "";
+            let total = 0;
+
+            carrito.forEach(producto => {
+                total += producto.precio * producto.cantidad;
+
+                let li = document.createElement("li");
+                li.innerHTML = `
+                    <span>${producto.nombre} x${producto.cantidad}</span>
+                    <button class="btn-mini" onclick="quitarProducto('${producto.nombre}')">Quitar</button>
+                `;
+                lista.appendChild(li);
+            });
+
+            totalSpan.textContent = total;
+        }
+
+        function quitarProducto(nombre) {
+            let producto = carrito.find(p => p.nombre === nombre);
+            if (!producto) return;
+
+            if (producto.cantidad > 1) {
+                producto.cantidad--;
+            } else {
+                carrito = carrito.filter(p => p.nombre !== nombre);
+            }
+
+            mostrarCarrito();
+        }
+
+        function enviarPedido() {
+            const cliente = document.getElementById("cliente").value.trim();
+            const total = carrito.reduce((sum, p) => sum + (p.precio * p.cantidad), 0);
+
+            if (!cliente) {
+                alert("Por favor escribe tu nombre.");
+                return;
+            }
+
+            if (carrito.length === 0) {
+                alert("Agrega al menos un producto.");
+                return;
+            }
+
+            fetch("/enviar_pedido", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({
+                    cliente: cliente,
+                    productos: carrito,
+                    total: total
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.error) {
+                    alert(data.error);
+                    return;
+                }
+
+                alert(data.mensaje);
+                carrito = [];
+                mostrarCarrito();
+                document.getElementById("cliente").value = "";
+            })
+            .catch(() => {
+                alert("Hubo un error al enviar el pedido.");
+            });
+        }
+
+        function abrirModal(nombre, descripcion, precio, rutaImg) {
+            document.getElementById("modalTitulo").textContent = nombre;
+            document.getElementById("modalDescripcion").textContent = descripcion;
+            document.getElementById("modalPrecio").textContent = "$" + precio;
+            document.getElementById("modalImg").src = "/static/" + rutaImg;
+            document.getElementById("modalBtn").onclick = function () {
+                agregarProducto(nombre, precio);
+                cerrarModal();
+            };
+            document.getElementById("modalPlatillo").style.display = "flex";
+        }
+
+        function cerrarModal() {
+            document.getElementById("modalPlatillo").style.display = "none";
+        }
+
+        window.onclick = function(event) {
+            const modal = document.getElementById("modalPlatillo");
+            if (event.target === modal) {
+                modal.style.display = "none";
+            }
+        }
+
+        function revisarEstadoDia() {
+            fetch("/estado_dia")
+                .then(res => res.json())
+                .then(data => {
+                    const aviso = document.getElementById("avisoDia");
+                    const btnEnviar = document.getElementById("btnEnviarPedido");
+                    const clienteInput = document.getElementById("cliente");
+                    const carritoBox = document.querySelector(".carrito-box");
+
+                    if (data.abierto) {
+                        aviso.classList.add("oculto");
+                        btnEnviar.disabled = false;
+                        btnEnviar.classList.remove("btn-deshabilitado");
+                        clienteInput.disabled = false;
+                        carritoBox.classList.remove("bloqueado");
+                    } else {
+                        aviso.classList.remove("oculto");
+                        btnEnviar.disabled = true;
+                        btnEnviar.classList.add("btn-deshabilitado");
+                        clienteInput.disabled = true;
+                        carritoBox.classList.add("bloqueado");
+                    }
+                });
+        }
+
+        revisarEstadoDia();
+        setInterval(revisarEstadoDia, 5000);
+    </script>
+</body>
+</html>
